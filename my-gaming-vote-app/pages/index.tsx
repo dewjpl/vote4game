@@ -1,55 +1,64 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
-const Home = () => {
-	const [games, setGames] = useState([]);
-	const [loading, setLoading] = useState(true);
+interface Game {
+	id: number;
+	name: string;
+	votes: number;
+}
 
-	// Pobieranie gier przy załadowaniu komponentu
+const Home: React.FC = () => {
+	const [games, setGames] = useState<Game[]>([]);
+	const [loading, setLoading] = useState<boolean>(true);
+	const [error, setError] = useState<string | null>(null);
+
 	useEffect(() => {
+		// Pobieranie listy gier przy załadowaniu komponentu
 		fetch("/api/games")
 			.then((response) => response.json())
 			.then((data) => {
-				if (data.games && Array.isArray(data.games)) {
-					setGames(data.games);
-				} else {
-					setGames([]);
-				}
+				setGames(data);
 				setLoading(false);
 			})
-			.catch((error) => {
-				console.error("Failed to fetch games:", error);
+			.catch((err) => {
+				console.error("Failed to fetch games:", err);
+				setError("Failed to load games");
 				setLoading(false);
 			});
 	}, []);
 
-	// Funkcja oddająca głos na grę
-	const vote = async (id) => {
+	const vote = async (gameId: number) => {
+		// Wysyłanie żądania POST do serwera w celu zagłosowania na grę
 		const response = await fetch("/api/vote", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify({ gameId: id }),
+			body: JSON.stringify({ gameId }),
 		});
+
 		if (response.ok) {
-			const updatedGames = games.map((game) => {
-				if (game.id === id) {
-					return { ...game, votes: game.votes + 1 };
-				}
-				return game;
-			});
-			setGames(updatedGames);
+			const updatedGame = await response.json();
+			// Aktualizacja stanu gier po pomyślnym głosowaniu
+			setGames(
+				games.map((game) =>
+					game.id === gameId ? { ...game, votes: updatedGame.votes } : game
+				)
+			);
 		} else {
-			console.error("Failed to cast vote");
+			const errorResponse = await response.json();
+			console.error(
+				"Failed to cast vote:",
+				errorResponse.error || "Unknown error"
+			);
 		}
 	};
 
-	if (loading) {
-		return <p>Loading...</p>;
-	}
+	if (loading) return <div>Loading games...</div>;
+	if (error) return <div>{error}</div>;
 
 	return (
 		<div>
+			<h1>Games List</h1>
 			<ul>
 				{games.map((game) => (
 					<li key={game.id}>
