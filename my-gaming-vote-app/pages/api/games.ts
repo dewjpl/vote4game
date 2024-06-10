@@ -60,3 +60,5 @@ async function handleVote(
 		res.status(500).json({ error: "Internal Server Error" });
 	}
 }
+
+//
