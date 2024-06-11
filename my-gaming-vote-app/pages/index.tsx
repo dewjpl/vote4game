@@ -4,6 +4,8 @@ interface Game {
 	id: number;
 	name: string;
 	votes: number;
+	img_url: string;
+	description: string;
 }
 
 const Home: React.FC = () => {
@@ -12,7 +14,6 @@ const Home: React.FC = () => {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		// Pobieranie listy gier przy załadowaniu komponentu
 		fetch("/api/games")
 			.then((response) => response.json())
 			.then((data) => {
@@ -27,43 +28,64 @@ const Home: React.FC = () => {
 	}, []);
 
 	const vote = async (gameId: number) => {
-		// Wysyłanie żądania POST do serwera w celu zagłosowania na grę
-		const response = await fetch("/api/vote", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({ gameId }),
-		});
+		try {
+			const response = await fetch("/api/vote", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ gameId }),
+			});
 
-		if (response.ok) {
-			const updatedGame = await response.json();
-			// Aktualizacja stanu gier po pomyślnym głosowaniu
-			setGames(
-				games.map((game) =>
-					game.id === gameId ? { ...game, votes: updatedGame.votes } : game
-				)
-			);
-		} else {
-			const errorResponse = await response.json();
-			console.error(
-				"Failed to cast vote:",
-				errorResponse.error || "Unknown error"
-			);
+			if (response.ok) {
+				const updatedGame = await response.json();
+				setGames(
+					games.map((game) =>
+						game.id === gameId ? { ...game, votes: updatedGame.votes } : game
+					)
+				);
+			} else {
+				throw new Error("Failed to cast vote");
+			}
+		} catch (error) {
+			console.error("Error casting vote:", error);
 		}
 	};
 
 	if (loading) return <div>Loading games...</div>;
-	if (error) return <div>{error}</div>;
+	if (error) return <div>Error: {error}</div>;
 
 	return (
-		<div>
-			<h1>Games List</h1>
+		<div className="container mx-auto px-4">
+			<h1 className="text-2xl font-bold text-center my-6">Games List</h1>
 			<ul>
 				{games.map((game) => (
-					<li key={game.id}>
-						{game.name} - Votes: {game.votes}
-						<button onClick={() => vote(game.id)}>Vote</button>
+					<li
+						key={game.id}
+						className="bg-white shadow-lg rounded-lg overflow-hidden mb-6"
+					>
+						<div className="md:flex">
+							<img
+								src={game.img_url}
+								alt={game.name}
+								className="w-full md:w-48 h-48 object-cover"
+							/>
+							<div className="p-4">
+								<h2 className="font-bold text-lg mb-2">{game.name}</h2>
+								<p className="text-gray-700 mb-4">{game.description}</p>
+								<div className="flex justify-between items-center">
+									<span className="text-sm font-semibold">
+										Votes: {game.votes}
+									</span>
+									<button
+										onClick={() => vote(game.id)}
+										className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+									>
+										Vote
+									</button>
+								</div>
+							</div>
+						</div>
 					</li>
 				))}
 			</ul>
